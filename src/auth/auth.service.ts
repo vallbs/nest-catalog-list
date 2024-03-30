@@ -60,6 +60,10 @@ export class AuthService {
     return this.generateTokens(existingUser.id, existingUser.email, userAgent);
   }
 
+  signOut(token: string) {
+    return this.deleteRefreshToken(token);
+  }
+
   private getAccessToken(userId, email) {
     return this.jwtService.sign({
       sub: userId,
@@ -101,5 +105,9 @@ export class AuthService {
     if (isExpiredToken) {
       throw new UnauthorizedException();
     }
+  }
+
+  private deleteRefreshToken(token: string) {
+    return this.prismaService.auth.delete({ where: { token } });
   }
 }

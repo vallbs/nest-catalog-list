@@ -54,6 +54,26 @@ export class AuthController {
     res.status(HttpStatus.OK).json({ accessToken });
   }
 
+  @Post('signout')
+  async logOut(@Cookie(REFRESH_TOKEN) refreshToken: string, @Res() res: Response) {
+    if (!refreshToken) {
+      res.sendStatus(HttpStatus.OK);
+      return;
+    }
+
+    await this.authService.signOut(refreshToken);
+
+    const noRefreshToken: Auth = {
+      token: '',
+      exp: new Date(),
+      userId: '',
+      userAgent: '',
+    };
+
+    this.setRefreshTokenToCookies(noRefreshToken, res);
+    res.sendStatus(HttpStatus.OK);
+  }
+
   @Post('refresh-tokens')
   async refreshToken(
     @Cookie(REFRESH_TOKEN) refreshTokenFromCookies: string,
