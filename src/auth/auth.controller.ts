@@ -1,11 +1,22 @@
-import { BadRequestException, Body, Controller, HttpStatus, Post, Res, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  ClassSerializerInterceptor,
+  Controller,
+  HttpStatus,
+  Post,
+  Res,
+  UnauthorizedException,
+  UseInterceptors,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Auth } from '@prisma/client';
+import { Response } from 'express';
+import { Cookie, Public, UserAgent } from 'src/common/decorators';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
-import { Auth } from '@prisma/client';
-import { Response } from 'express';
-import { ConfigService } from '@nestjs/config';
-import { Cookie, Public, UserAgent } from 'src/common/decorators';
+import { UserReponse } from 'src/user/responses';
 
 const REFRESH_TOKEN = 'refresh_token';
 
@@ -17,6 +28,7 @@ export class AuthController {
   ) {}
 
   @Public()
+  @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
   async signup(@Body() dto: SignUpDto) {
     const newUser = await this.authService.signUp(dto);
@@ -24,6 +36,8 @@ export class AuthController {
     if (!newUser) {
       throw new BadRequestException('Could not create user');
     }
+
+    return new UserReponse(newUser);
   }
 
   @Public()
