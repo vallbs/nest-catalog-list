@@ -34,7 +34,7 @@ export class AuthController {
 
     this.setRefreshTokenToCookies(refreshToken, res);
 
-    res.sendStatus(HttpStatus.OK).json({ accessToken });
+    res.status(HttpStatus.OK).json({ accessToken });
   }
 
   private setRefreshTokenToCookies(refreshToken: Auth, res: Response) {

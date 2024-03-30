@@ -24,21 +24,22 @@ export class AuthService {
   async signIn(dto: SignInDto): Promise<Tokens> {
     const { email, password } = dto;
 
-    try {
-      const existingUser = await this.userService.findOne(email);
-      const doPasswordsMatch = compareSync(password, existingUser.password);
+    const existingUser = await this.userService.findOne(email);
 
-      if (!existingUser || !doPasswordsMatch) {
-        throw new UnauthorizedException(`User with the email ${email} not found`);
-      }
-
-      const accessToken = this.getAccessToken(existingUser.id, email);
-      const refreshToken = await this.getRefreshToken(existingUser.id);
-
-      return { accessToken, refreshToken };
-    } catch (err) {
-      console.log(err);
+    if (!existingUser) {
+      throw new UnauthorizedException(`Incorrect email or password`);
     }
+
+    const doPasswordsMatch = compareSync(password, existingUser.password);
+
+    if (!doPasswordsMatch) {
+      throw new UnauthorizedException(`Incorrect email or password`);
+    }
+
+    const accessToken = this.getAccessToken(existingUser.id, email);
+    const refreshToken = await this.getRefreshToken(existingUser.id);
+
+    return { accessToken, refreshToken };
   }
 
   private getAccessToken(userId, email) {
