@@ -1,6 +1,6 @@
 import { IsEmail, IsNotEmpty, IsString, MinLength, Validate } from 'class-validator';
 import { IsPasswordsMatching } from 'src/common/validators';
-import { isEmailUnique } from '../common/validators';
+import { isEmailUnique, isUserNameUnique } from '../common/validators';
 
 export class SignUpDto {
   @IsNotEmpty()
@@ -11,6 +11,7 @@ export class SignUpDto {
 
   @IsNotEmpty()
   @IsString()
+  @isUserNameUnique()
   userName: string;
 
   @IsNotEmpty()

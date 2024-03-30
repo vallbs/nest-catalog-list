@@ -19,10 +19,10 @@ export class UserService {
     });
   }
 
-  findOne(idOrEmail: string) {
+  findOne(idOrEmailOrUserName: string) {
     return this.prismaService.user.findFirst({
       where: {
-        OR: [{ id: idOrEmail }, { email: idOrEmail }],
+        OR: [{ id: idOrEmailOrUserName }, { email: idOrEmailOrUserName }, { userName: idOrEmailOrUserName }],
       },
     });
   }

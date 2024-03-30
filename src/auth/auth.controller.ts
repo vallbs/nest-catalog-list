@@ -7,18 +7,19 @@ import {
   Post,
   Res,
   UnauthorizedException,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Auth } from '@prisma/client';
 import { Response } from 'express';
-import { Cookie, Public, UserAgent } from 'src/common/decorators';
+import { Cookie, UserAgent } from 'src/common/decorators';
+import { UserReponse } from 'src/user/responses';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
-import { UserReponse } from 'src/user/responses';
-
-const REFRESH_TOKEN = 'refresh_token';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { REFRESH_TOKEN } from 'src/common/consts';
 
 @Controller('auth')
 export class AuthController {
@@ -27,7 +28,6 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
-  @Public()
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
   async signup(@Body() dto: SignUpDto) {
@@ -40,7 +40,6 @@ export class AuthController {
     return new UserReponse(newUser);
   }
 
-  @Public()
   @Post('signin')
   async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string) {
     const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
@@ -54,6 +53,7 @@ export class AuthController {
     res.status(HttpStatus.OK).json({ accessToken });
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('signout')
   async logOut(@Cookie(REFRESH_TOKEN) refreshToken: string, @Res() res: Response) {
     if (!refreshToken) {
@@ -74,6 +74,7 @@ export class AuthController {
     res.sendStatus(HttpStatus.OK);
   }
 
+  @UseGuards(JwtAuthGuard)
   @Post('refresh-tokens')
   async refreshToken(
     @Cookie(REFRESH_TOKEN) refreshTokenFromCookies: string,
