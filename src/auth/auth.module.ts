@@ -6,10 +6,12 @@ import { JwtModule } from '@nestjs/jwt';
 import { options } from './config';
 import { UserService } from 'src/user/user.service';
 import { IsEmailUnique } from './common/validators';
+import { STRATEGIES } from './strategies';
+import { GUARDS } from './guards';
 
 @Module({
   controllers: [AuthController],
-  providers: [AuthService, UserService, IsEmailUnique],
+  providers: [AuthService, UserService, IsEmailUnique, ...STRATEGIES, ...GUARDS],
   imports: [PassportModule, JwtModule.registerAsync(options())],
 })
 export class AuthModule {}

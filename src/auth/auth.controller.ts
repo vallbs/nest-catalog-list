@@ -5,7 +5,7 @@ import { SignInDto } from './dto/signIn.dto';
 import { Auth } from '@prisma/client';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { Cookie, UserAgent } from 'src/common/decorators';
+import { Cookie, Public, UserAgent } from 'src/common/decorators';
 
 const REFRESH_TOKEN = 'refresh_token';
 
@@ -16,6 +16,7 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  @Public()
   @Post('signup')
   async signup(@Body() dto: SignUpDto) {
     const newUser = await this.authService.signUp(dto);
@@ -25,6 +26,7 @@ export class AuthController {
     }
   }
 
+  @Public()
   @Post('signin')
   async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string) {
     const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
