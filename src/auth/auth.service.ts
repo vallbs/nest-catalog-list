@@ -8,6 +8,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 } from 'uuid';
 import { add } from 'date-fns';
+import { Auth } from '@prisma/client';
 
 @Injectable()
 export class AuthService {
@@ -21,7 +22,7 @@ export class AuthService {
     return this.userService.create(dto);
   }
 
-  async signIn(dto: SignInDto): Promise<Tokens> {
+  async signIn(dto: SignInDto, userAgent: string): Promise<Tokens> {
     const { email, password } = dto;
 
     const existingUser = await this.userService.findOne(email);
@@ -36,15 +37,19 @@ export class AuthService {
       throw new UnauthorizedException(`Incorrect email or password`);
     }
 
-    return this.generateTokens(existingUser.id, email);
+    return this.generateTokens(existingUser.id, email, userAgent);
   }
 
-  async refreshTokens(refreshToken: string): Promise<Tokens> {
-    const token = await this.prismaService.auth.delete({ where: { token: refreshToken } });
+  async refreshTokens(refreshToken: string, userAgent: string): Promise<Tokens> {
+    const token: Auth = await this.prismaService.auth.findUnique({ where: { token: refreshToken } });
 
     if (!token) {
       throw new UnauthorizedException();
     }
+
+    await this.prismaService.auth.delete({ where: { token: refreshToken } });
+
+    this.checkRefreshTokenExpiration(token);
 
     const existingUser = await this.userService.findOne(token.userId);
 
@@ -52,7 +57,7 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    return this.generateTokens(existingUser.id, existingUser.email);
+    return this.generateTokens(existingUser.id, existingUser.email, userAgent);
   }
 
   private getAccessToken(userId, email) {
@@ -62,21 +67,39 @@ export class AuthService {
     });
   }
 
-  private async getRefreshToken(userId: string) {
-    return this.prismaService.auth.create({
-      data: {
+  private async createRefreshToken(userId: string, userAgent: string) {
+    const { token = '' } =
+      (await this.prismaService.auth.findFirst({
+        where: { userId, userAgent },
+      })) || {};
+
+    return this.prismaService.auth.upsert({
+      where: { token },
+      update: {
+        token: v4(),
+        exp: add(new Date(), { months: 1 }),
+      },
+      create: {
         token: v4(),
         exp: add(new Date(), { months: 1 }),
         userId,
-        userAgent: 'user-agent',
+        userAgent,
       },
     });
   }
 
-  private async generateTokens(userId, email): Promise<Tokens> {
+  private async generateTokens(userId: string, email: string, userAgent: string): Promise<Tokens> {
     const accessToken = this.getAccessToken(userId, email);
-    const refreshToken = await this.getRefreshToken(userId);
+    const refreshToken = await this.createRefreshToken(userId, userAgent);
 
     return { accessToken, refreshToken };
+  }
+
+  private checkRefreshTokenExpiration(refreshToken: Auth) {
+    const isExpiredToken = new Date(refreshToken.exp) < new Date();
+
+    if (isExpiredToken) {
+      throw new UnauthorizedException();
+    }
   }
 }

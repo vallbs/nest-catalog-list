@@ -5,7 +5,7 @@ import { SignInDto } from './dto/signIn.dto';
 import { Auth } from '@prisma/client';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
-import { Cookie } from 'src/common/decorators';
+import { Cookie, UserAgent } from 'src/common/decorators';
 
 const REFRESH_TOKEN = 'refresh_token';
 
@@ -26,8 +26,8 @@ export class AuthController {
   }
 
   @Post('signin')
-  async signIn(@Body() dto: SignInDto, @Res() res: Response) {
-    const { accessToken, refreshToken } = await this.authService.signIn(dto);
+  async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string) {
+    const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
 
     if (!accessToken || !refreshToken) {
       throw new BadRequestException('Could not login');
@@ -39,12 +39,16 @@ export class AuthController {
   }
 
   @Post('refresh-tokens')
-  async refreshToken(@Cookie(REFRESH_TOKEN) refreshTokenFromCookie: string, @Res() res: Response) {
-    if (!refreshTokenFromCookie) {
+  async refreshToken(
+    @Cookie(REFRESH_TOKEN) refreshTokenFromCookies: string,
+    @Res() res: Response,
+    @UserAgent() agent: string,
+  ) {
+    if (!refreshTokenFromCookies) {
       throw new UnauthorizedException();
     }
 
-    const { accessToken, refreshToken } = await this.authService.refreshTokens(refreshTokenFromCookie);
+    const { accessToken, refreshToken } = await this.authService.refreshTokens(refreshTokenFromCookies, agent);
     this.setRefreshTokenToCookies(refreshToken, res);
 
     res.status(HttpStatus.OK).json({ accessToken });
