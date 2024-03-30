@@ -5,6 +5,7 @@ import { SignInDto } from './dto/signIn.dto';
 import { Auth } from '@prisma/client';
 import { Response } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { Cookie } from 'src/common/decorators';
 
 const REFRESH_TOKEN = 'refresh_token';
 
@@ -32,6 +33,18 @@ export class AuthController {
       throw new BadRequestException('Could not login');
     }
 
+    this.setRefreshTokenToCookies(refreshToken, res);
+
+    res.status(HttpStatus.OK).json({ accessToken });
+  }
+
+  @Post('refresh-tokens')
+  async refreshToken(@Cookie(REFRESH_TOKEN) refreshTokenFromCookie: string, @Res() res: Response) {
+    if (!refreshTokenFromCookie) {
+      throw new UnauthorizedException();
+    }
+
+    const { accessToken, refreshToken } = await this.authService.refreshTokens(refreshTokenFromCookie);
     this.setRefreshTokenToCookies(refreshToken, res);
 
     res.status(HttpStatus.OK).json({ accessToken });

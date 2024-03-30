@@ -36,10 +36,23 @@ export class AuthService {
       throw new UnauthorizedException(`Incorrect email or password`);
     }
 
-    const accessToken = this.getAccessToken(existingUser.id, email);
-    const refreshToken = await this.getRefreshToken(existingUser.id);
+    return this.generateTokens(existingUser.id, email);
+  }
 
-    return { accessToken, refreshToken };
+  async refreshTokens(refreshToken: string): Promise<Tokens> {
+    const token = await this.prismaService.auth.delete({ where: { token: refreshToken } });
+
+    if (!token) {
+      throw new UnauthorizedException();
+    }
+
+    const existingUser = await this.userService.findOne(token.userId);
+
+    if (!existingUser) {
+      throw new UnauthorizedException();
+    }
+
+    return this.generateTokens(existingUser.id, existingUser.email);
   }
 
   private getAccessToken(userId, email) {
@@ -58,5 +71,12 @@ export class AuthService {
         userAgent: 'user-agent',
       },
     });
+  }
+
+  private async generateTokens(userId, email): Promise<Tokens> {
+    const accessToken = this.getAccessToken(userId, email);
+    const refreshToken = await this.getRefreshToken(userId);
+
+    return { accessToken, refreshToken };
   }
 }

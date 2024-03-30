@@ -19,8 +19,12 @@ export class UserService {
     });
   }
 
-  findOne(email: string) {
-    return this.prismaService.user.findUnique({ where: { email } });
+  findOne(idOrEmail: string) {
+    return this.prismaService.user.findFirst({
+      where: {
+        OR: [{ id: idOrEmail }, { email: idOrEmail }],
+      },
+    });
   }
 
   private hashPassword(password: string): string {
