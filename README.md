@@ -1,12 +1,6 @@
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Installation
-
-```bash
-$ npm install
-```
+Basic Authentication and Authorisation functionality written on [Nest](https://github.com/nestjs/nest) .
 
 ## Running the app
 
