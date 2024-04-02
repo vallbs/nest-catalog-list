@@ -23,7 +23,7 @@ There are two ways to run the application:
 ### Running Nest App in Local Terminal
 
 1. Ensure your Docker daemon is running.
-2. Run `npm i` to install dependencies.
+2. Run `npm ci` to install dependencies.
 3. Start the database Docker container with `npm run docker:up:db`
 4. Run migrations with `npm run migrate:dev`
 

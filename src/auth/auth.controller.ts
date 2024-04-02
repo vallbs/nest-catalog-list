@@ -5,6 +5,7 @@ import {
   Controller,
   HttpStatus,
   Post,
+  Put,
   Res,
   UnauthorizedException,
   UseGuards,
@@ -13,13 +14,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Auth } from '@prisma/client';
 import { Response } from 'express';
-import { Cookie, UserAgent } from 'src/common/decorators';
-import { UserReponse } from 'src/user/responses';
+import { REFRESH_TOKEN } from 'src/common/consts';
+import { Cookie, CurrentUser, UserAgent } from 'src/common/decorators';
+import { UserResponse } from 'src/user/responses';
 import { AuthService } from './auth.service';
-import { SignUpDto } from './dto';
+import { SignUpDto, UpdatePasswordDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { REFRESH_TOKEN } from 'src/common/consts';
 
 @Controller('auth')
 export class AuthController {
@@ -37,7 +38,7 @@ export class AuthController {
       throw new BadRequestException('Could not create user');
     }
 
-    return new UserReponse(newUser);
+    return new UserResponse(newUser);
   }
 
   @Post('signin')
@@ -89,6 +90,27 @@ export class AuthController {
     this.setRefreshTokenToCookies(refreshToken, res);
 
     res.status(HttpStatus.OK).json({ accessToken });
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('password')
+  async updatePassword(
+    @Cookie(REFRESH_TOKEN) refreshToken: string,
+    @Body() dto: UpdatePasswordDto,
+    @CurrentUser('sub') userIdFromToken: string,
+    @Res() res: Response,
+  ) {
+    await this.authService.updatePassword(refreshToken, dto, userIdFromToken);
+
+    const noRefreshToken: Auth = {
+      token: '',
+      exp: new Date(),
+      userId: '',
+      userAgent: '',
+    };
+
+    this.setRefreshTokenToCookies(noRefreshToken, res);
+    res.sendStatus(HttpStatus.OK);
   }
 
   private setRefreshTokenToCookies(refreshToken: Auth, res: Response) {

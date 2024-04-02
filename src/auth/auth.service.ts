@@ -1,7 +1,7 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { compareSync } from 'bcrypt';
 import { UserService } from 'src/user/user.service';
-import { SignUpDto } from './dto';
+import { SignUpDto, UpdatePasswordDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
 import { Tokens } from './interfaces';
 import { JwtService } from '@nestjs/jwt';
@@ -64,6 +64,39 @@ export class AuthService {
     return this.deleteRefreshToken(token);
   }
 
+  async updatePassword(refreshToken: string, updatePasswordDto: UpdatePasswordDto, userIdFromToken: string) {
+    if (!refreshToken) {
+      throw new UnauthorizedException();
+    }
+
+    const { email, userName, password } = (await this.userService.findOne(userIdFromToken)) || {};
+
+    // checking that user who is triyng to update the password is using token generated for him (not compromised)
+    if (email !== updatePasswordDto.emailOrUserName && userName !== updatePasswordDto.emailOrUserName) {
+      throw new UnauthorizedException(`Incorrect email or userName or password`);
+    }
+
+    const doPasswordsMatch = compareSync(updatePasswordDto.oldPassword, password);
+
+    if (!doPasswordsMatch) {
+      throw new UnauthorizedException(`Incorrect email or userName or password`);
+    }
+
+    const payloadToUpdate = {
+      password: updatePasswordDto.newPassword,
+    };
+
+    try {
+      // should perform actions not in parrallel in order not to delete tokens when possible error on update happens
+      await this.userService.update(userIdFromToken, payloadToUpdate);
+      await this.deleteAllRefreshTokensForUser(userIdFromToken);
+
+      return;
+    } catch (err: any) {
+      throw new InternalServerErrorException();
+    }
+  }
+
   private getAccessToken(userId, email) {
     return this.jwtService.sign({
       sub: userId,
@@ -109,5 +142,9 @@ export class AuthService {
 
   private deleteRefreshToken(token: string) {
     return this.prismaService.auth.delete({ where: { token } });
+  }
+
+  private deleteAllRefreshTokensForUser(userId: string) {
+    return this.prismaService.auth.deleteMany({ where: { userId: { equals: userId } } });
   }
 }

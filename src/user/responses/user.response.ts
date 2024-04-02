@@ -1,7 +1,7 @@
 import { User } from '@prisma/client';
 import { Exclude } from 'class-transformer';
 
-export class UserReponse implements User {
+export class UserResponse implements User {
   id: string;
   email: string;
   userName: string;

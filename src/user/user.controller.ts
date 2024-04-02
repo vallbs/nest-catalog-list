@@ -9,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { Cookie, CurrentUser } from 'src/common/decorators';
-import { UserReponse } from './responses';
+import { UserResponse } from './responses';
 import { UserService } from './user.service';
 import { REFRESH_TOKEN } from 'src/common/consts';
 
@@ -31,6 +31,6 @@ export class UserController {
       throw new NotFoundException();
     }
 
-    return new UserReponse(existingUser);
+    return new UserResponse(existingUser);
   }
 }
