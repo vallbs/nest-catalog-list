@@ -9,6 +9,6 @@ export class IsPasswordsMatching implements ValidatorConstraintInterface {
   }
 
   defaultMessage(): string {
-    return 'Passwords do not match';
+    return 'passwords do not match';
   }
 }

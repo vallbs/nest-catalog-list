@@ -21,6 +21,7 @@ model User {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
   Auth      Auth[]
+  Catalogs  Catalog[]
 
   @@map("users")
 }
@@ -33,4 +34,15 @@ model Auth {
   userAgent String   @map("user_agent")
 
   @@map("auth")
+}
+
+model Catalog {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  vertical String
+  primary  Boolean
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   String  @map("user_id")
+
+  @@map("catalogs")
 }
