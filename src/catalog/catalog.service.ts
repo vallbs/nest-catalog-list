@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
-import { CreateCatalogDto } from './dto';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
+import { CreateCatalogDto, UpdateCatalogDto } from './dto';
 
 @Injectable()
 export class CatalogService {
@@ -24,21 +24,40 @@ export class CatalogService {
     return this.prismaService.catalog.create({ data: catalogToCreate });
   }
 
-  // findAll() {
-  //   return `This action returns all catalog`;
-  // }
+  findAll(userId: string) {
+    return this.prismaService.catalog.findMany({ where: { userId } });
+  }
 
   // findOne(id: number) {
   //   return `This action returns a #${id} catalog`;
   // }
 
-  // update(id: number, updateCatalogDto: UpdateCatalogDto) {
-  //   return `This action updates a #${id} catalog`;
-  // }
+  async updateById(catalogId: string, userId: string, updateCatalogDto: UpdateCatalogDto) {
+    await this.checkUserCatalogExistence(catalogId, userId);
 
-  // remove(id: number) {
-  //   return `This action removes a #${id} catalog`;
-  // }
+    const primary = updateCatalogDto.primary !== undefined ? updateCatalogDto.primary : false;
+
+    if (primary) {
+      await this.checkOnePrimaryPerVertical(userId, updateCatalogDto.vertical);
+    }
+
+    const updatedCatalog = await this.prismaService.catalog.update({
+      where: { id: catalogId, userId },
+      data: updateCatalogDto,
+    });
+
+    return updatedCatalog;
+  }
+
+  delete(catalogId: string, userId: string) {
+    return this.prismaService.catalog.delete({ where: { id: catalogId, userId } });
+  }
+
+  async deleteMany(catalogIds: string[], userId: string) {
+    const res = await this.prismaService.catalog.deleteMany({ where: { id: { in: catalogIds }, userId } });
+
+    return res;
+  }
 
   private async checkNameIsUnique(name) {
     const exitingCatalogForName = await this.prismaService.catalog.findUnique({ where: { name } });
@@ -54,6 +73,14 @@ export class CatalogService {
 
     if (existingUserCatalogsPerVertical.length) {
       throw new BadRequestException(`user may have only one primary catalog per vertical`);
+    }
+  }
+
+  private async checkUserCatalogExistence(catalogId: string, userId: string) {
+    const exitsingCatalog = await this.prismaService.catalog.findUnique({ where: { id: catalogId, userId } });
+
+    if (!exitsingCatalog) {
+      throw new NotFoundException(`catalog with id '${catalogId}' do not exist for the current user`);
     }
   }
 }
