@@ -54,9 +54,14 @@ export class CatalogService {
   }
 
   async deleteMany(catalogIds: string[], userId: string) {
-    const res = await this.prismaService.catalog.deleteMany({ where: { id: { in: catalogIds }, userId } });
+    const { existingIds, missingIds } = await this.findIdsDistributionForDeletion(catalogIds, userId);
 
-    return res;
+    await this.prismaService.catalog.deleteMany({ where: { id: { in: existingIds } } });
+
+    return {
+      deletedIds: existingIds,
+      missingIds,
+    };
   }
 
   private async checkNameIsUnique(name) {
@@ -82,5 +87,32 @@ export class CatalogService {
     if (!exitsingCatalog) {
       throw new NotFoundException(`catalog with id '${catalogId}' do not exist for the current user`);
     }
+  }
+
+  private async findIdsDistributionForDeletion(
+    catalogIds: string[],
+    userId: string,
+  ): Promise<{ existingIds: string[]; missingIds: string[] }> {
+    const existingCatalogIds =
+      (await this.prismaService.catalog.findMany({
+        where: { id: { in: catalogIds }, userId },
+        select: { id: true },
+      })) || [];
+    const existingCatalogIdsInArray = existingCatalogIds.map(({ id }) => id);
+
+    if (!existingCatalogIdsInArray.length) {
+      return {
+        existingIds: [],
+        missingIds: catalogIds,
+      };
+    }
+
+    const existingCatalogIdsInSet = new Set(existingCatalogIdsInArray);
+    const missingIds = catalogIds.filter((id) => !existingCatalogIdsInSet.has(id));
+
+    return {
+      existingIds: existingCatalogIdsInArray,
+      missingIds,
+    };
   }
 }

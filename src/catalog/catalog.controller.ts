@@ -5,11 +5,13 @@ import {
   Controller,
   Delete,
   Get,
+  HttpStatus,
   InternalServerErrorException,
   NotFoundException,
   Param,
   Patch,
   Post,
+  Res,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
@@ -18,6 +20,7 @@ import { CatalogService } from './catalog.service';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { CreateCatalogDto, DeleteBulkDto, UpdateCatalogDto } from './dto';
 import { CatalogResponse } from './responses';
+import { Response } from 'express';
 
 @Controller('catalogs')
 export class CatalogController {
@@ -89,7 +92,14 @@ export class CatalogController {
 
   @Delete()
   @UseGuards(JwtAuthGuard)
-  deleteBulk(@Body() deleteBulkDto: DeleteBulkDto, @CurrentUser('sub') userId: string) {
-    return this.catalogService.deleteMany(deleteBulkDto.ids, userId);
+  async deleteBulk(@Body() deleteBulkDto: DeleteBulkDto, @CurrentUser('sub') userId: string, @Res() res: Response) {
+    const result = await this.catalogService.deleteMany(deleteBulkDto.ids, userId);
+
+    const response = {
+      ...result,
+      message: 'Bulk deletion successful',
+    };
+
+    res.status(HttpStatus.OK).json(response);
   }
 }
