@@ -3,3 +3,8 @@ export enum Vertical {
   HOME = 'home',
   GENERAL = 'general',
 }
+
+export interface IdsDistribution {
+  existingIds: string[];
+  missingIds: string[];
+}
