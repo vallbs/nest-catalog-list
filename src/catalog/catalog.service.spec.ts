@@ -1,5 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException } from '@nestjs/common';
+import { BadRequestException, ConflictException } from '@nestjs/common';
 import { CatalogService } from './catalog.service';
 import { CatalogRepository } from './catalog.repository';
 import { CreateCatalogDto } from './dto';
@@ -40,7 +40,7 @@ describe('CatalogService', () => {
     beforeEach(() => {
       id = v4();
       userId = v4();
-      createCatalogDto = { name: 'Test Catalog', vertical: Vertical.FASHION, primary: true };
+      createCatalogDto = { name: 'test', vertical: Vertical.FASHION, primary: true };
     });
 
     it('should successfully create a catalog', async () => {
@@ -60,12 +60,12 @@ describe('CatalogService', () => {
       await expect(service.create(createCatalogDto, userId)).rejects.toThrow(BadRequestException);
     });
 
-    it('should throw BadRequestException if catalog is second primary within the same vertical', async () => {
+    it('should throw ConflictException if catalog is second primary within the same vertical', async () => {
       const result = { id, userId, ...createCatalogDto } as Catalog;
 
       repository.findFirstPrimaryCatalog.mockResolvedValue(result);
 
-      await expect(service.create(createCatalogDto, userId)).rejects.toThrow(BadRequestException);
+      await expect(service.create(createCatalogDto, userId)).rejects.toThrow(ConflictException);
     });
   });
 });

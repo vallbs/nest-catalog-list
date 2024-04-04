@@ -42,7 +42,7 @@ export class AuthController {
   }
 
   @Post('signin')
-  async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string) {
+  async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string = 'e2e-test') {
     const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
 
     if (!accessToken || !refreshToken) {

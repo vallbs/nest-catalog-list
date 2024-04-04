@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   ClassSerializerInterceptor,
+  ConflictException,
   Controller,
   Delete,
   Get,
@@ -38,7 +39,7 @@ export class CatalogController {
 
       return new CatalogResponse(createdCatalog);
     } catch (err: any) {
-      if (err instanceof NotFoundException || err instanceof BadRequestException) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException || err instanceof ConflictException) {
         throw err;
       }
       throw new InternalServerErrorException('Could not create the catalog');
@@ -83,7 +84,7 @@ export class CatalogController {
 
       return new CatalogResponse(updatedCatalog);
     } catch (err: any) {
-      if (err instanceof NotFoundException || err instanceof BadRequestException) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException || err instanceof ConflictException) {
         throw err;
       }
       throw new InternalServerErrorException(`Could not update the catalog`);

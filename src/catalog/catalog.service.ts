@@ -1,6 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CatalogRepository } from './catalog.repository';
-import { CreateCatalogDto, UpdateCatalogDto } from './dto';
+import { CreateCatalogDto, UpdateCatalogDto, VALIDATION } from './dto';
 import { IdsDistribution } from './interfaces';
 
 @Injectable()
@@ -59,7 +59,7 @@ export class CatalogService {
     const existingCatalogForName = await this.catalogRepository.findUniqueByName(name);
 
     if (existingCatalogForName) {
-      throw new BadRequestException(`A catalog with the name '${name}' already exists.`);
+      throw new BadRequestException(VALIDATION.NAME.ALREADY_EXISTS.replace('{name}', name));
     }
   }
 
@@ -67,7 +67,7 @@ export class CatalogService {
     const primaryCatalog = await this.catalogRepository.findFirstPrimaryCatalog(userId, vertical);
 
     if (primaryCatalog) {
-      throw new BadRequestException(`A primary catalog already exists in the '${vertical}' vertical for this user.`);
+      throw new ConflictException(VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', vertical));
     }
   }
 
@@ -75,9 +75,7 @@ export class CatalogService {
     const existingCatalog = await this.catalogRepository.findUniqueByIdAndUserId(catalogId, userId);
 
     if (!existingCatalog) {
-      throw new NotFoundException(
-        `Catalog with id '${catalogId}' does not exist or is not accessible by the current user.`,
-      );
+      throw new NotFoundException(VALIDATION.CATALOG.DOES_NOT_EXISTS.replace('{catalogId}', catalogId));
     }
 
     return existingCatalog;
