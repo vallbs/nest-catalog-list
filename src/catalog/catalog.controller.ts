@@ -15,12 +15,12 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { CurrentUser } from 'src/common/decorators';
 import { CatalogService } from './catalog.service';
-import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CreateCatalogDto, DeleteBulkDto, UpdateCatalogDto } from './dto';
 import { CatalogResponse } from './responses';
 import { Response } from 'express';
+import { CurrentUser } from '../common/decorators';
 
 @Controller('catalogs')
 export class CatalogController {
@@ -38,6 +38,9 @@ export class CatalogController {
 
       return new CatalogResponse(createdCatalog);
     } catch (err: any) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException) {
+        throw err;
+      }
       throw new InternalServerErrorException('Could not create the catalog');
     }
   }
@@ -55,6 +58,9 @@ export class CatalogController {
 
       return catalogs;
     } catch (err: any) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
       throw new InternalServerErrorException(`Could not get the user's catalogs`);
     }
   }

@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from 'src/prisma/prisma.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { CreateCatalogDto, UpdateCatalogDto } from './dto';
 import { IdsDistribution } from './interfaces';
 
@@ -34,12 +34,12 @@ export class CatalogService {
   // }
 
   async updateById(catalogId: string, userId: string, updateCatalogDto: UpdateCatalogDto) {
-    await this.checkUserCatalogExistence(catalogId, userId);
+    const existingCatalog = await this.checkUserCatalogExistence(catalogId, userId);
 
     const primary = updateCatalogDto.primary ?? false;
 
     if (primary) {
-      await this.checkOnePrimaryPerVertical(userId, updateCatalogDto.vertical);
+      await this.checkOnePrimaryPerVertical(userId, existingCatalog.vertical);
     }
 
     return this.prismaService.catalog.update({
@@ -72,8 +72,7 @@ export class CatalogService {
   }
 
   private async checkOnePrimaryPerVertical(userId: string, vertical: string) {
-    const primaryCatalog =
-      (await this.prismaService.catalog.findFirst({ where: { userId, vertical, primary: true } })) ?? [];
+    const primaryCatalog = await this.prismaService.catalog.findFirst({ where: { userId, vertical, primary: true } });
 
     if (primaryCatalog) {
       throw new BadRequestException(`A primary catalog already exists in the '${vertical}' vertical for this user.`);
@@ -88,6 +87,8 @@ export class CatalogService {
         `Catalog with id '${catalogId}' does not exist or is not accessible by the current user.`,
       );
     }
+
+    return existingCatalog;
   }
 
   /**
