@@ -1,11 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { CatalogRepository } from './catalog.repository';
 import { CreateCatalogDto, UpdateCatalogDto } from './dto';
 import { IdsDistribution } from './interfaces';
 
 @Injectable()
 export class CatalogService {
-  constructor(private readonly prismaService: PrismaService) {}
+  constructor(private readonly catalogRepository: CatalogRepository) {}
 
   async create(catalog: CreateCatalogDto, userId: string) {
     await this.checkNameIsUnique(catalog.name);
@@ -18,20 +18,15 @@ export class CatalogService {
 
     const catalogToCreate = {
       ...catalog,
-      user: { connect: { id: userId } },
       primary,
     };
 
-    return this.prismaService.catalog.create({ data: catalogToCreate });
+    return this.catalogRepository.create(catalogToCreate, userId);
   }
 
   findAll(userId: string) {
-    return this.prismaService.catalog.findMany({ where: { userId } });
+    return this.catalogRepository.findAll(userId);
   }
-
-  // findOne(id: number) {
-  //   return `This action returns a #${id} catalog`;
-  // }
 
   async updateById(catalogId: string, userId: string, updateCatalogDto: UpdateCatalogDto) {
     const existingCatalog = await this.checkUserCatalogExistence(catalogId, userId);
@@ -42,20 +37,17 @@ export class CatalogService {
       await this.checkOnePrimaryPerVertical(userId, existingCatalog.vertical);
     }
 
-    return this.prismaService.catalog.update({
-      where: { id: catalogId, userId },
-      data: updateCatalogDto,
-    });
+    return this.catalogRepository.updateById(catalogId, userId, updateCatalogDto);
   }
 
   delete(catalogId: string, userId: string) {
-    return this.prismaService.catalog.delete({ where: { id: catalogId, userId } });
+    return this.catalogRepository.delete(catalogId, userId);
   }
 
   async deleteMany(catalogIds: string[], userId: string) {
     const { existingIds, missingIds } = await this.findIdsDistributionForDeletion(catalogIds, userId);
 
-    await this.prismaService.catalog.deleteMany({ where: { id: { in: existingIds } } });
+    await this.catalogRepository.deleteMany(existingIds, userId);
 
     return {
       deletedIds: existingIds,
@@ -64,7 +56,7 @@ export class CatalogService {
   }
 
   private async checkNameIsUnique(name) {
-    const existingCatalogForName = await this.prismaService.catalog.findUnique({ where: { name } });
+    const existingCatalogForName = await this.catalogRepository.findUniqueByName(name);
 
     if (existingCatalogForName) {
       throw new BadRequestException(`A catalog with the name '${name}' already exists.`);
@@ -72,7 +64,7 @@ export class CatalogService {
   }
 
   private async checkOnePrimaryPerVertical(userId: string, vertical: string) {
-    const primaryCatalog = await this.prismaService.catalog.findFirst({ where: { userId, vertical, primary: true } });
+    const primaryCatalog = await this.catalogRepository.findFirstPrimaryCatalog(userId, vertical);
 
     if (primaryCatalog) {
       throw new BadRequestException(`A primary catalog already exists in the '${vertical}' vertical for this user.`);
@@ -80,7 +72,7 @@ export class CatalogService {
   }
 
   private async checkUserCatalogExistence(catalogId: string, userId: string) {
-    const existingCatalog = await this.prismaService.catalog.findUnique({ where: { id: catalogId, userId } });
+    const existingCatalog = await this.catalogRepository.findUniqueByIdAndUserId(catalogId, userId);
 
     if (!existingCatalog) {
       throw new NotFoundException(
@@ -103,11 +95,7 @@ export class CatalogService {
    * `missingIds` contains the IDs of catalogs that do not exist in the database and therefore cannot be deleted.
    */
   private async findIdsDistributionForDeletion(catalogIds: string[], userId: string): Promise<IdsDistribution> {
-    const existingCatalogIds =
-      (await this.prismaService.catalog.findMany({
-        where: { id: { in: catalogIds }, userId },
-        select: { id: true },
-      })) || [];
+    const existingCatalogIds = (await this.catalogRepository.findManyByIdsAndUserId(catalogIds, userId)) ?? [];
     const existingCatalogIdsInArray = existingCatalogIds.map(({ id }) => id);
 
     if (!existingCatalogIdsInArray.length) {
