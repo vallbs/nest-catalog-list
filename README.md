@@ -5,17 +5,6 @@ Basic Authentication and Authorisation functionality written on [Nest](https://g
 ## Running the app
 
 1. Ensure your Docker daemon is running.
-2. Run Docker Compose with `npm run docker:up`.
-
-   **NOTE:** Rest assured that application has started successfully (message `Nest application successfully started` in logs)
-
-3. After usage, run `npm run docker:down`
-
-**CAUTION**: do not forget to use `containerized prisma migration` for `DATABASE_URL` in `.env` when running all containers.
-
-### Running Nest App in Local Terminal
-
-1. Ensure your Docker daemon is running.
 2. Run `npm ci` to install dependencies.
 3. Run the app locally with `npm run start:dev:all`
 
