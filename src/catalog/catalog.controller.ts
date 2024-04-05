@@ -94,7 +94,14 @@ export class CatalogController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   delete(@Param('id') catalogId: string, @CurrentUser('sub') userId: string) {
-    return this.catalogService.delete(catalogId, userId);
+    try {
+      return this.catalogService.delete(catalogId, userId);
+    } catch (err: any) {
+      if (err instanceof NotFoundException || err instanceof BadRequestException || err instanceof ConflictException) {
+        throw err;
+      }
+      throw new InternalServerErrorException(`Could not delete the catalog`);
+    }
   }
 
   @Delete()

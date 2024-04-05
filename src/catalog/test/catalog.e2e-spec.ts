@@ -27,7 +27,6 @@ describe('CatalogController (e2e)', () => {
     await app.init();
 
     prismaService = moduleFixture.get<PrismaService>(PrismaService);
-    // await prismaService.cleanDatabase();
 
     const usersToCreate = [
       {
@@ -55,6 +54,7 @@ describe('CatalogController (e2e)', () => {
     });
     accessToken = sigInResponse.body.accessToken;
   });
+
   afterAll(async () => {
     await prismaService.user.deleteMany();
     await app.close();
@@ -326,6 +326,121 @@ describe('CatalogController (e2e)', () => {
       expect(response.body.message).toContain(
         VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', catalogToUpdate.vertical),
       );
+    });
+  });
+
+  describe('delete catalog', () => {
+    it('should throw Unauthorized for not provided token in request', async () => {
+      const catalogId = v4();
+
+      const response = await request(app.getHttpServer()).delete(`/catalogs/${catalogId}`);
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('should successfully delete the existing catalog for the current user', async () => {
+      const catalog = await prismaService.catalog.create({
+        data: {
+          name: 'hats',
+          vertical: Vertical.FASHION,
+          primary: true,
+          userId: currentUser.id,
+        },
+      });
+
+      const { status } = await request(app.getHttpServer())
+        .delete(`/catalogs/${catalog.id}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(status).toBe(HttpStatus.OK);
+      const records = await prismaService.catalog.findUnique({ where: { id: catalog.id } });
+      expect(records).toBeNull();
+    });
+
+    it('should fail on delete of non-existing catalog', async () => {
+      await prismaService.catalog.create({
+        data: {
+          name: 'hats',
+          vertical: Vertical.FASHION,
+          primary: true,
+          userId: currentUser.id,
+        },
+      });
+
+      const notExistingCatalogId = v4();
+
+      const response = await request(app.getHttpServer())
+        .delete(`/catalogs/${notExistingCatalogId}`)
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(response.status).toBe(HttpStatus.NOT_FOUND);
+      expect(response.body).toHaveProperty('message');
+      expect(response.body.message).toContain(
+        VALIDATION.CATALOG.DOES_NOT_EXISTS.replace('{catalogId}', notExistingCatalogId),
+      );
+    });
+  });
+
+  describe('delete catalogs in bulk', () => {
+    it('should throw Unauthorized for not provided token in request', async () => {
+      const ids = [v4(), v4()];
+
+      const response = await request(app.getHttpServer()).delete(`/catalogs`).send({ ids });
+      expect(response.status).toBe(HttpStatus.UNAUTHORIZED);
+    });
+
+    it('should delete only existing catalogs for the current user', async () => {
+      const anotherUser = createdUsers[1];
+
+      const createdCatalogs = await Promise.all([
+        prismaService.catalog.create({
+          data: {
+            name: 'hats',
+            vertical: Vertical.FASHION,
+            primary: true,
+            userId: currentUser.id,
+          },
+        }),
+        prismaService.catalog.create({
+          data: {
+            name: 'shoes',
+            vertical: Vertical.FASHION,
+            primary: false,
+            userId: currentUser.id,
+          },
+        }),
+        prismaService.catalog.create({
+          data: {
+            name: 'pants',
+            vertical: Vertical.FASHION,
+            primary: true,
+            userId: anotherUser.id,
+          },
+        }),
+      ]);
+
+      const currentUserCatalogsIds = createdCatalogs
+        .filter((catalog) => catalog.userId === currentUser.id)
+        .map((catalog) => catalog.id);
+      const anotherUserCatalogsIds = createdCatalogs
+        .filter((catalog) => catalog.userId === anotherUser.id)
+        .map((catalog) => catalog.id);
+      const notExistingCatalogsIds = [v4(), v4()];
+      const ids = [...currentUserCatalogsIds, ...anotherUserCatalogsIds, ...notExistingCatalogsIds];
+
+      const {
+        status,
+        body: { deletedIds, missingIds },
+      } = await request(app.getHttpServer())
+        .delete(`/catalogs`)
+        .send({ ids })
+        .set('Authorization', `Bearer ${accessToken}`);
+
+      expect(status).toBe(HttpStatus.OK);
+      expect(deletedIds).toEqual(currentUserCatalogsIds);
+      expect(missingIds).toEqual([...anotherUserCatalogsIds, ...notExistingCatalogsIds]);
+
+      const records = await prismaService.catalog.findMany({});
+      expect(records.length).toBe(anotherUserCatalogsIds.length);
     });
   });
 });

@@ -40,7 +40,9 @@ export class CatalogService {
     return this.catalogRepository.updateById(catalogId, userId, updateCatalogDto);
   }
 
-  delete(catalogId: string, userId: string) {
+  async delete(catalogId: string, userId: string) {
+    await this.checkUserCatalogExistence(catalogId, userId);
+
     return this.catalogRepository.delete(catalogId, userId);
   }
 
