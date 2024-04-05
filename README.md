@@ -55,16 +55,19 @@ App hosts the following endpoints:
   - Provide emailOrUserName, oldPassword, newPassword and repeatNewPassword fields
 
 - **GET /user/me**
+
   - Include the current refreshToken in cookies and the current accessToken in the Authentication Bearer header.
--
+
 - **POST /catalogs**
 
   - Create catalog for the current user
   - Include the current accessToken in the Authentication Bearer header
 
 - **GET /catalogs**
+
   - Observe all current user catalogs
   - Include the current accessToken in the Authentication Bearer header
+
 - **PATCH /catalogs/{catalogId}**
 
   - Update current user catalog by id (only primary field is processed)
