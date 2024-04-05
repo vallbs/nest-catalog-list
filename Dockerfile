@@ -1,4 +1,4 @@
-FROM node:16 AS builder
+FROM node:16-alpine AS base
 
 # Create app directory
 WORKDIR /app
@@ -7,19 +7,33 @@ WORKDIR /app
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install app dependencies
-RUN npm install
-
+FROM base as dev
+ENV NODE_ENV=dev
+RUN npm install --frozen-lockfile
 COPY . .
+RUN printenv
+RUN npm run migrate:dev
+# RUN npm run start:dev
+# CMD [ "npm", "run", "migrate:dev" ]
+CMD [ "npm", "run", "start:dev" ]
 
-RUN npm run build
+FROM dev AS test
+ENV NODE_ENV=test
+CMD [ "npm", "run", "test" ]
 
-FROM node:16
+FROM test AS test-cov
+CMD [ "npm", "run", "test:cov" ]
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/prisma ./prisma
+FROM test AS test-watch
+ENV GIT_WORK_TREE=/app GIT_DIR=/app/.git
+RUN apk add git
+CMD [ "npm", "run", "test:watch" ]
 
-EXPOSE 3000
-CMD [ "npm", "run", "start:migrate:prod" ]
+FROM base AS prod
+ENV NODE_ENV=production
+RUN npm install --frozen-lockfile --production
+COPY . .
+RUN npm global add @nestjs/cli
+RUN npm run migrate:dev
+RUN npm build
+CMD [ "npm", "run", "start:prod" ]

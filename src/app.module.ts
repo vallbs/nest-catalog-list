@@ -8,13 +8,15 @@ import { APP_FILTER, APP_INTERCEPTOR, APP_PIPE } from '@nestjs/core';
 import * as cookieParser from 'cookie-parser';
 import { ResponseInterceptor } from './response/response.interceptor';
 import { HttpExceptionFilter } from './common/filters';
+
+const envPath = `.env.${process.env.STAGE}`;
+
 @Module({
   imports: [
     UserModule,
     PrismaModule,
     AuthModule,
-    // ConfigModule.forRoot({ isGlobal: true, envFilePath: process.env.NODE_ENV === 'test' ? '.env.test' : '.env' }),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: [envPath] }),
     CatalogModule,
   ],
   providers: [

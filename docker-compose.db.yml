@@ -1,19 +1,9 @@
 version: '3.8'
 services:
   postgres:
-    image: postgres:13
-    container_name: postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-123456}
-      POSTGRES_DB: ${POSTGRES_DB:-auth_db}
-      POSTGRES_HOST: ${HOST:-localhost}
+    image: postgres
     restart: always
     ports:
-      - '${DB_PORT:-5432}:5432'
-    volumes:
-      - postgres:/var/lib/postgresql/data
-
-volumes:
-  postgres:
-    name: nest-db
+      - 5432:5432
+    env_file:
+      - './.env.${STAGE:-dev}'
