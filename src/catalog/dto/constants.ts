@@ -12,6 +12,6 @@ export const VALIDATION = Object.freeze({
     SECOND_PRIMARY: `A primary catalog already exists in the '{vertical}' vertical for this user.`,
   },
   CATALOG: {
-    DOES_NOT_EXISTS: `Catalog with id '{id}' does not exist or is not accessible by the current user.`,
+    DOES_NOT_EXISTS: `Catalog with id '{catalogId}' does not exist or is not accessible by the current user.`,
   },
 });
