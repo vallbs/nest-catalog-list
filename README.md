@@ -4,13 +4,6 @@ Basic Authentication and Authorisation functionality written on [Nest](https://g
 
 ## Running the app
 
-There are two ways to run the application:
-
-- All in Docker containers.
-- PostgreSQL in a Docker container and the Nest app in a local terminal.
-
-### Running All in Containers
-
 1. Ensure your Docker daemon is running.
 2. Run Docker Compose with `npm run docker:up`.
 
@@ -24,21 +17,25 @@ There are two ways to run the application:
 
 1. Ensure your Docker daemon is running.
 2. Run `npm ci` to install dependencies.
-3. Start the database Docker container with `npm run docker:up:db`
-4. Run migrations with `npm run migrate:dev`
+3. Run the app locally with `npm run start:dev:all`
 
-   **IMPORTANT**: to run migrations locally we should change HOST for the DATABASE_URL in the `.env` (in the root folder) file (from 'postgres' to 'localhost'):
+   ### Details
 
-   - `postgres` is for the name of container when all running in container
-   - `localhost` is for the value to connect to db via local terminal.
-     In the `.env` file `DATABASE_URL` for `local prisma migration` could be used.
+   This command will run under the hood:
 
-   **CAUTION**: do not forget to get back to the `containerized prisma migration` for `DATABASE_URL` in the `.env` (in the root and prisma folders) when running all app in containers
+   ```
+   npm run docker:db:dev
+   npm run migrate:dev
+   npm run start:dev
+   ```
 
-5. Run the app locally with `npm run start`
-6. After the usage run `npm run docker:down`
+   In case that this command is running with errors please try to run upper command one-by-one and inspect possible errors
 
-## How the auth endpoints work
+4. After the usage run `npm run docker:down`
+
+## How the endpoints work
+
+**NOTE**: as an api key JWT token is used (accessToken) along with the refreshToken in cookies
 
 App hosts the following endpoints:
 
@@ -63,8 +60,53 @@ App hosts the following endpoints:
   - Include the current refreshToken in cookies and the current accessToken in the Authentication Bearer header.
   - Deletes the refresh token from the database.
 
+- **PUT /auth/password**
+
+  - Updates the password
+  - Provide emailOrUserName, oldPassword, newPassword and repeatNewPassword fields
+
 - **GET /user/me**
   - Include the current refreshToken in cookies and the current accessToken in the Authentication Bearer header.
+-
+- **POST /catalogs**
+
+  - Create catalog for the current user
+  - Include the current accessToken in the Authentication Bearer header
+
+- **GET /catalogs**
+  - Observe all current user catalogs
+  - Include the current accessToken in the Authentication Bearer header
+- **PATCH /catalogs/{catalogId}**
+
+  - Update current user catalog by id (only primary field is processed)
+  - Include the current accessToken in the Authentication Bearer header
+
+- **DELETE /catalogs/{catalogId}**
+
+  - Delete current user catalog by id
+  - Include the current accessToken in the Authentication Bearer header
+
+- **DELETE /catalogs**
+  - Delete current user catalogs in bulk by ids ({"ids": ["id_1", "id_2"]})
+  - Include the current accessToken in the Authentication Bearer header
+
+## Integration Tests (E2E Tests)
+
+**How to run**
+
+```
+npm run test:e2e
+```
+
+Additionally you can run `npm run docker:down` if other container is running.
+
+There is on flaky test that sometimes end up with an error.
+
+## Further Plans
+
+- add Swagger
+- some endpoints responses are not with the same structure as the majority (ex. signin). Do need to be updated
+- add other authentications: OAuth2
 
 ## License
 
