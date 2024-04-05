@@ -46,13 +46,17 @@ describe('CatalogController (e2e)', () => {
       request(app.getHttpServer()).post('/auth/signup').send(usersToCreate[0]),
       request(app.getHttpServer()).post('/auth/signup').send(usersToCreate[1]),
     ]);
-    createdUsers = createdUserResponses.map(({ body }) => body);
+    createdUsers = createdUserResponses.map(({ body }) => body.result);
     currentUser = { ...createdUsers[0], password: usersToCreate[0].password };
     const sigInResponse = await request(app.getHttpServer()).post('/auth/signin').send({
       email: currentUser.email,
       password: currentUser.password,
     });
     accessToken = sigInResponse.body.accessToken;
+  });
+
+  beforeEach(async () => {
+    await prismaService.catalog.deleteMany();
   });
 
   afterAll(async () => {
@@ -75,7 +79,7 @@ describe('CatalogController (e2e)', () => {
     });
 
     it('should create a catalog for the current user', async () => {
-      const { status, body: { userId } = {} } = await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/catalogs')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
@@ -84,12 +88,12 @@ describe('CatalogController (e2e)', () => {
           primary: true,
         });
 
-      expect(status).toBe(HttpStatus.CREATED);
-      expect(userId).toEqual(currentUser.id);
+      expect(response.status).toBe(HttpStatus.CREATED);
+      expect(response.body.result?.userId).toEqual(currentUser.id);
     });
 
     it(`should create a catalog with missing primary defaulted to 'false'`, async () => {
-      const { status, body: { primary } = {} } = await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .post('/catalogs')
         .set('Authorization', `Bearer ${accessToken}`)
         .send({
@@ -97,8 +101,8 @@ describe('CatalogController (e2e)', () => {
           vertical: Vertical.FASHION,
         });
 
-      expect(status).toBe(HttpStatus.CREATED);
-      expect(primary).toBe(false);
+      expect(response.status).toBe(HttpStatus.CREATED);
+      expect(response.body.result?.primary).toBe(false);
     });
 
     it('should fail to create a catalog with missing name', async () => {
@@ -110,11 +114,12 @@ describe('CatalogController (e2e)', () => {
           primary: true,
         });
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.BAD_REQUEST);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(VALIDATION.NAME.ONLY_LETTERS);
-      expect(response.body.message).toContain(VALIDATION.NAME.STRING);
-      expect(response.body.message).toContain(VALIDATION.NAME.NOT_EMPTY);
+      expect(message).toContain(VALIDATION.NAME.ONLY_LETTERS);
+      expect(message).toContain(VALIDATION.NAME.STRING);
+      expect(message).toContain(VALIDATION.NAME.NOT_EMPTY);
     });
 
     it('should fail to create a catalog with a duplicate name', async () => {
@@ -135,9 +140,10 @@ describe('CatalogController (e2e)', () => {
           primary: false,
         });
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.BAD_REQUEST);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(VALIDATION.NAME.ALREADY_EXISTS.replace('{name}', name));
+      expect(message).toContain(VALIDATION.NAME.ALREADY_EXISTS.replace('{name}', name));
     });
 
     it('should fail on an invalid vertical', async () => {
@@ -150,9 +156,10 @@ describe('CatalogController (e2e)', () => {
           primary: true,
         });
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.BAD_REQUEST);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(VALIDATION.VERTICAL.FROM_ENUM);
+      expect(message).toContain(VALIDATION.VERTICAL.FROM_ENUM);
     });
 
     it(`should fail to create the second primary catalog within the same vertical`, async () => {
@@ -174,9 +181,10 @@ describe('CatalogController (e2e)', () => {
           primary,
         });
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.CONFLICT);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', vertical));
+      expect(message).toContain(VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', vertical));
     });
   });
 
@@ -223,7 +231,7 @@ describe('CatalogController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`);
 
       expect(response.status).toBe(HttpStatus.OK);
-      expect(response.body.length).toBe(2);
+      expect(response.body.result.length).toBe(2);
     });
   });
 
@@ -251,13 +259,13 @@ describe('CatalogController (e2e)', () => {
         primary: false,
       };
 
-      const { status, body } = await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .patch(`/catalogs/${catalog.id}`)
         .send(payloadToUpdate)
         .set('Authorization', `Bearer ${accessToken}`);
 
-      expect(status).toBe(HttpStatus.OK);
-      expect(body).toEqual({
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.result).toEqual({
         id: catalog.id,
         name: catalog.name,
         vertical: catalog.vertical,
@@ -287,11 +295,10 @@ describe('CatalogController (e2e)', () => {
         .send(payloadToUpdate)
         .set('Authorization', `Bearer ${accessToken}`);
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.NOT_FOUND);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(
-        VALIDATION.CATALOG.DOES_NOT_EXISTS.replace('{catalogId}', notExistingCatalogId),
-      );
+      expect(message).toContain(VALIDATION.CATALOG.DOES_NOT_EXISTS.replace('{catalogId}', notExistingCatalogId));
     });
 
     it(`should fail on update of existing catalog as the second primary within the same vertical`, async () => {
@@ -321,11 +328,10 @@ describe('CatalogController (e2e)', () => {
         .send({ primary: true })
         .set('Authorization', `Bearer ${accessToken}`);
 
+      const message = getMessageFromResponse(response);
+
       expect(response.status).toBe(HttpStatus.CONFLICT);
-      expect(response.body).toHaveProperty('message');
-      expect(response.body.message).toContain(
-        VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', catalogToUpdate.vertical),
-      );
+      expect(message).toContain(VALIDATION.VERTICAL.SECOND_PRIMARY.replace('{vertical}', catalogToUpdate.vertical));
     });
   });
 
@@ -427,20 +433,21 @@ describe('CatalogController (e2e)', () => {
       const notExistingCatalogsIds = [v4(), v4()];
       const ids = [...currentUserCatalogsIds, ...anotherUserCatalogsIds, ...notExistingCatalogsIds];
 
-      const {
-        status,
-        body: { deletedIds, missingIds },
-      } = await request(app.getHttpServer())
+      const response = await request(app.getHttpServer())
         .delete(`/catalogs`)
         .send({ ids })
         .set('Authorization', `Bearer ${accessToken}`);
 
-      expect(status).toBe(HttpStatus.OK);
-      expect(deletedIds).toEqual(currentUserCatalogsIds);
-      expect(missingIds).toEqual([...anotherUserCatalogsIds, ...notExistingCatalogsIds]);
+      expect(response.status).toBe(HttpStatus.OK);
+      expect(response.body.result.deletedIds).toEqual(currentUserCatalogsIds);
+      expect(response.body.result.missingIds).toEqual([...anotherUserCatalogsIds, ...notExistingCatalogsIds]);
 
       const records = await prismaService.catalog.findMany({});
       expect(records.length).toBe(anotherUserCatalogsIds.length);
     });
   });
 });
+
+function getMessageFromResponse(response) {
+  return response.body?.result?.response?.message;
+}
