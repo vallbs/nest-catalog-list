@@ -21,7 +21,9 @@ import { AuthService } from './auth.service';
 import { SignUpDto, UpdatePasswordDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiCookieAuth } from '@nestjs/swagger';
 
+@ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -29,6 +31,7 @@ export class AuthController {
     private readonly configService: ConfigService,
   ) {}
 
+  @ApiOperation({ summary: 'Register a new user' })
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
   async signup(@Body() dto: SignUpDto) {
@@ -41,6 +44,7 @@ export class AuthController {
     return new UserResponse(newUser);
   }
 
+  @ApiOperation({ summary: 'Sign in user' })
   @Post('signin')
   async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string = 'e2e-test') {
     const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
@@ -54,6 +58,9 @@ export class AuthController {
     res.status(HttpStatus.OK).json({ accessToken });
   }
 
+  @ApiOperation({ summary: 'Sign out user' })
+  @ApiBearerAuth()
+  @ApiCookieAuth()
   @UseGuards(JwtAuthGuard)
   @Post('signout')
   async logOut(@Cookie(REFRESH_TOKEN) refreshToken: string, @Res() res: Response) {
