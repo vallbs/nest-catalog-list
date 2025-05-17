@@ -1,18 +1,17 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SignInDto {
+export abstract class BaseAuthDto {
   @ApiProperty({
-    example: 'user@example.com',
     description: 'User email address',
-    format: 'email',
+    example: 'user@example.com',
   })
   email: string;
+}
 
+export abstract class SignInDto extends BaseAuthDto {
   @ApiProperty({
-    example: 'Password123!',
     description: 'User password',
-    minLength: 8,
-    format: 'password',
+    example: 'password123',
   })
   password: string;
 }

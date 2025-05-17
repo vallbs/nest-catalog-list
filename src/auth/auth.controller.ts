@@ -21,9 +21,10 @@ import { AuthService } from './auth.service';
 import { SignUpDto, UpdatePasswordDto } from './dto';
 import { SignInDto } from './dto/signIn.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiCookieAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiCookieAuth, ApiResponse } from '@nestjs/swagger';
+import { TokenResponse, AuthErrorResponse } from './responses/auth.response';
 
-@ApiTags('auth')
+@ApiTags('Authentication')
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -32,6 +33,16 @@ export class AuthController {
   ) {}
 
   @ApiOperation({ summary: 'Register a new user' })
+  @ApiResponse({
+    status: 201,
+    description: 'User successfully created',
+    type: UserResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: AuthErrorResponse,
+  })
   @UseInterceptors(ClassSerializerInterceptor)
   @Post('signup')
   async signup(@Body() dto: SignUpDto) {
@@ -45,6 +56,16 @@ export class AuthController {
   }
 
   @ApiOperation({ summary: 'Sign in user' })
+  @ApiResponse({
+    status: 200,
+    description: 'User successfully authenticated',
+    type: TokenResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: AuthErrorResponse,
+  })
   @Post('signin')
   async signIn(@Body() dto: SignInDto, @Res() res: Response, @UserAgent() agent: string = 'e2e-test') {
     const { accessToken, refreshToken } = await this.authService.signIn(dto, agent);
@@ -61,6 +82,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Sign out user' })
   @ApiBearerAuth()
   @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'User successfully logged out',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: AuthErrorResponse,
+  })
   @UseGuards(JwtAuthGuard)
   @Post('signout')
   async logOut(@Cookie(REFRESH_TOKEN) refreshToken: string, @Res() res: Response) {
@@ -82,6 +112,19 @@ export class AuthController {
     res.sendStatus(HttpStatus.OK);
   }
 
+  @ApiOperation({ summary: 'Refresh access and refresh tokens' })
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Tokens successfully refreshed',
+    type: TokenResponse,
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: AuthErrorResponse,
+  })
   @UseGuards(JwtAuthGuard)
   @Post('refresh-tokens')
   async refreshToken(
@@ -99,6 +142,23 @@ export class AuthController {
     res.status(HttpStatus.OK).json({ accessToken });
   }
 
+  @ApiOperation({ summary: 'Update user password' })
+  @ApiBearerAuth()
+  @ApiCookieAuth()
+  @ApiResponse({
+    status: 200,
+    description: 'Password successfully updated',
+  })
+  @ApiResponse({
+    status: 401,
+    description: 'Unauthorized',
+    type: AuthErrorResponse,
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request',
+    type: AuthErrorResponse,
+  })
   @UseGuards(JwtAuthGuard)
   @Put('password')
   async updatePassword(
